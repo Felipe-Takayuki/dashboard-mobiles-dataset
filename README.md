@@ -1,6 +1,6 @@
 # Dashboard Mobile
 
-## Como rodar ?
+## Como Instalar ?
 
 - No linux
 ``` 
