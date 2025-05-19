@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
-from services.readcsv import formatterCSV
+from utils.readcsv import formatterCSV
 
 
 class HomePage:
@@ -35,8 +35,8 @@ class HomePage:
         if ram != "Todos":
             df_filtered = df_filtered[df_filtered["RAM"] == ram]
         
-        st.subheader("Modelos filtrados:")
-        st.table(df_filtered["Company Name"] + " " + df_filtered["Model Name"])
+        # st.subheader("Modelos filtrados:")
+        # st.table(df_filtered["Company Name"] + " " + df_filtered["Model Name"])
 
         st.markdown("---")
         st.subheader("📊 Gráficos de Análise")
