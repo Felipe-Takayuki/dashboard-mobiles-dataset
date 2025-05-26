@@ -1,4 +1,4 @@
-import streamlit as st 
+import streamlit as st
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -6,16 +6,19 @@ from utils.readcsv import formatterCSV
 
 
 class HomePage:
-    def init(): 
+
+    def init():
         dataFormatted = formatterCSV()
 
-        # Limpeza para garantir que 'Launched Price (USA)' seja numérico
+        dataFormatted["Storage"] = dataFormatted["Storage"].astype(str).str.extract(
+            r'(\d+)').astype(float)
+
         dataFormatted["Launched Price (USA)"] = pd.to_numeric(
-            dataFormatted["Launched Price (USA)"].astype(str).str.replace(r'[^\d.]', '', regex=True),
+            dataFormatted["Launched Price (USA)"].astype(str).str.replace(
+                r'[^\d.]', '', regex=True),
             errors='coerce'
         )
 
-        # Suas transformações originais
         dataFormatted["Battery Capacity"] = dataFormatted["Battery Capacity"]
         dataFormatted["Screen Size"] = dataFormatted["Screen Size"]
         dataFormatted["RAM"] = dataFormatted["RAM"]
@@ -24,81 +27,145 @@ class HomePage:
         dataFormatted["Launched Year"] = dataFormatted["Launched Year"].astype(int)
 
         st.set_page_config(layout="wide")
-        st.title("Dashboard de Análise de Custo Benefício dos Celulares")
+        st.title("Dashboard de Análise de Dados de Dispositivos Mobile")
 
         # Filtros
-        ramList = ['Todos'] + sorted(dataFormatted["RAM"].dropna().unique().tolist())
-        ram = st.sidebar.selectbox("Memória RAM", ramList)
+        marcasList = ['Todas'] + \
+            sorted(dataFormatted["Company Name"].unique().tolist())
+        marcas = st.sidebar.selectbox("Marca", marcasList)
+
+        modelosList = ['Todos'] + \
+            sorted(dataFormatted["Model Name"].unique().tolist())
+        modelos = st.sidebar.selectbox("Modelo", modelosList)  # Novo filtro de modelo
+
+            # Filtro de Preço
+        min_price = float(dataFormatted["Launched Price (USA)"].min())
+        max_price = float(dataFormatted["Launched Price (USA)"].max())
+
+        preco_minimo, preco_maximo = st.sidebar.slider(
+            "Faixa de Preço (USD)",
+            min_value=min_price,
+            max_value=max_price,
+            value=(min_price, max_price)
+        )
 
         df_filtered = dataFormatted.copy()
-        if ram != "Todos":
-            df_filtered = df_filtered[df_filtered["RAM"] == ram]
-        
-        # st.subheader("Modelos filtrados:")
-        # st.table(df_filtered["Company Name"] + " " + df_filtered["Model Name"])
+        if marcas != "Todas":
+            df_filtered = df_filtered[df_filtered["Company Name"] == marcas]
+        if modelos != "Todos":
+            df_filtered = df_filtered[df_filtered["Model Name"] == modelos]  # Aplicar filtro de modelo
+
+
+        df_filtered = df_filtered[
+            (df_filtered["Launched Price (USA)"] >= preco_minimo) &
+            (df_filtered["Launched Price (USA)"] <= preco_maximo)
+        ]
 
         st.markdown("---")
         st.subheader("📊 Gráficos de Análise")
 
-        # Gráfico 1: Média de Preço por Fabricante
-        st.markdown("#### Média de Preço (EUA) por Fabricante")
+        # Modificação do Gráfico 1: Média de Preço em Dólar por Marca
+        st.markdown("#### Média de Preço em Dólar por Marca/Modelo")
         fig1, ax1 = plt.subplots(figsize=(10, 6))
-        avg_price = df_filtered.groupby("Company Name")["Launched Price (USA)"].mean().sort_values(ascending=False)
-        sns.barplot(x=avg_price.values, y=avg_price.index, palette="viridis", ax=ax1)
+        avg_price = df_filtered.groupby("Company Name")["Launched Price (USA)"].mean().sort_values(ascending=True)
+        ax1.plot(avg_price.values, avg_price.index, marker='o')
+
+        if modelos != "Todos":
+            avg_price = df_filtered.groupby("Model Name")[
+                "Launched Price (USA)"].mean().sort_values(ascending=True)
+            ax1.barh(avg_price.index, avg_price.values)
+            ax1.set_xlabel("Média de Preço (USD)")
+            ax1.set_ylabel("Modelo")
+        ax1.grid(True)
         st.pyplot(fig1)
 
         # Gráfico 2: Marca vs Bateria
-        st.markdown("#### Média de Bateria (mAh) por Fabricante")
+        st.markdown("#### Média de Bateria (mAh) por Marca/Modelo")
         fig2, ax2 = plt.subplots(figsize=(10, 6))
         avg_baterry = df_filtered.groupby("Company Name")["Battery Capacity"].mean().sort_values(ascending=False)
-        sns.barplot(x=avg_baterry.values, y=avg_baterry.index, palette="viridis", ax=ax2)
+        sns.barplot(x=avg_baterry.values,y=avg_baterry.index, palette="viridis", ax=ax2)
+        ax2.set_xlabel("Média da Capacidade da Bateria (mAh)")
+        ax2.set_ylabel("Fabricante")
+        if modelos != "Todos":  
+            avg_baterry = df_filtered.groupby("Model Name")[
+                "Battery Capacity"].mean().sort_values(ascending=False)
+            sns.barplot(x=avg_baterry.values,
+                        y=avg_baterry.index, palette="viridis", ax=ax2)
+            ax2.set_xlabel("Média da Capacidade da Bateria (mAh)")
+            ax2.set_ylabel("Modelo")
         st.pyplot(fig2)
 
-        # Gráfico 3: Tamanho da Tela por Marca
-        st.markdown("#### Média de Tamanho de Tela (inches) por Fabricante")
-        fig3, ax3 = plt.subplots(figsize=(10, 6))
-        avg_screen = df_filtered.groupby("Company Name")["Screen Size"].mean().sort_values(ascending=False)
-        sns.barplot(x=avg_screen.values, y=avg_screen.index, palette="viridis", ax=ax3)
-        st.pyplot(fig3)
-#        st.markdown("#### Distribuição do Tamanho da Tela por Marca")
-#        fig3, ax3 = plt.subplots(figsize=(12, 6))
-#        sns.boxplot(data=df_filtered, x="Company Name", y="Screen Size", palette="Set3", ax=ax3)
-#        ax3.tick_params(axis='x', rotation=45)
-#        st.pyplot(fig3)
+        # Score Custo Beneficio
+        st.markdown("---")
+        st.subheader("🏆 Ranking de Custo-Benefício")
+        st.markdown(
+            "```FORMULA = RAM (GB) + Capacidade da Bateria (mAh) + Megapixels da Câmera Traseira / Preço (USD) ```")
+        # Score de custo-benefício
+        # Garantindo que as colunas usadas no cálculo existam e são numéricas
+        if all(col in df_filtered.columns for col in [
+                "RAM", "Battery Capacity", "Back Camera MP", "Launched Price (USA)"]):
+            df_filtered["Score CustoBenefício"] = (
+                df_filtered["RAM"].fillna(0) +
+                df_filtered["Battery Capacity"].fillna(0) +
+                pd.to_numeric(df_filtered["Back Camera MP"], errors='coerce').fillna(
+                    0)
+            ) / df_filtered["Launched Price (USA)"].fillna(1)  # Evitar divisão por zero
+            df_score = df_filtered.sort_values(
+                "Score CustoBenefício", ascending=False).reset_index(drop=True)
 
-        # Gráfico 4: RAM por marca
-        st.markdown("#### Média de Memória RAM (GB) por Fabricante")
-        fig4, ax4 = plt.subplots(figsize=(10, 6))
-        avg_screen = df_filtered.groupby("Company Name")["RAM"].mean().sort_values(ascending=False)
-        sns.barplot(x=avg_screen.values, y=avg_screen.index, palette="viridis", ax=ax4)
-        st.pyplot(fig4)
+            st.markdown("#### Top Dispositivos por Custo-Benefício")
+            num_top_devices = 10
+            top_cost_benefit = df_score.head(num_top_devices)[
+                ["Company Name", "Model Name", "RAM", "Storage", "Battery Capacity",
+                 "Back Camera MP", "Launched Price (USA)", "Score CustoBenefício"]
+            ]
+            top_cost_benefit.columns = ["Marca", "Modelo", "RAM (GB)",
+                                        "Armazenamento (GB)", "Bateria (mAh)",
+                                        "Câmera Traseira (MP)", "Preço (USD)",
+                                        "Score Custo-Benefício"]
+            st.dataframe(top_cost_benefit, use_container_width=True)
 
-#        st.markdown("#### Preço vs Memória RAM")
-#        fig4, ax4 = plt.subplots(figsize=(10, 6))
-#        sns.scatterplot(data=df_filtered, x="RAM", y="Launched Price (USA)", hue="Company Name", ax=ax4)
-#        st.pyplot(fig4)
+        else:
+            st.warning(
+                "Colunas necessárias para calcular o Score de Custo-Benefício não encontradas.")
 
-        # Gráfico 5: Evolução do Preço Médio por Ano
-        #st.markdown("#### Evolução do Preço Médio por Ano de Lançamento (EUA)")
-        #fig5, ax5 = plt.subplots(figsize=(10, 6))
-        #avg_by_year = df_filtered.groupby("Launched Year")["Launched Price (USA)"].mean()
-        #sns.lineplot(x=avg_by_year.index, y=avg_by_year.values, marker="o", ax=ax5)
-        #st.pyplot(fig5)
+        # Gráfico do score (movido para antes das tabelas de consumidor)
+        st.markdown("#### Visualização do Score de Custo-Benefício")
+        num_top = st.sidebar.slider(
+            "Número de dispositivos no ranking do gráfico", min_value=5, max_value=20, value=10)
+        top_devices = df_score.head(num_top)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(top_devices["Model Name"],
+                top_devices["Score CustoBenefício"], color='mediumseagreen')
+        ax.invert_yaxis()
+        ax.set_title(f'Top {num_top} Dispositivos com Melhor Custo-Benefício')
+        ax.set_xlabel("Score Custo-Benefício")
+        st.pyplot(fig)
+        
+        # Comparação
+        st.markdown("---")
+        st.subheader("🔍 Comparação de Modelos")
 
-        # Gráfico 6: Preço vs Câmera Frontal
-        st.markdown("#### Média de MP da Câmera Frontal (MP) por Fabricante")
-        fig4, ax4 = plt.subplots(figsize=(10, 6))
-        avg_screen = df_filtered.groupby("Company Name")["Front Camera MP"].mean().sort_values(ascending=False)
-        sns.barplot(x=avg_screen.values, y=avg_screen.index, palette="viridis", ax=ax4)
-        st.pyplot(fig4)
+        # Selectbox para selecionar os modelos a comparar
+        modelos_para_comparar = st.multiselect(
+            "Selecione os modelos para comparar",
+            df_filtered["Model Name"].unique()
+        )
 
-        st.markdown("#### Preço vs Megapixels da Câmera Frontal")
-        fig6, ax6 = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=df_filtered, x="Front Camera MP", y="Launched Price (USA)", hue="Company Name", ax=ax6)
-        st.pyplot(fig6)
+        if modelos_para_comparar:
+            # Filtrar o DataFrame com base nos modelos selecionados
+            df_comparacao = df_filtered[df_filtered["Model Name"].isin(
+                modelos_para_comparar)]
 
-        # Gráfico 7: Preço vs Câmera Traseira
-        st.markdown("#### Preço vs Megapixels da Câmera Traseira")
-        fig7, ax7 = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(data=df_filtered, x="Back Camera MP", y="Launched Price (USA)", hue="Company Name", ax=ax7)
-        st.pyplot(fig7)
+            # Selecionar as colunas para comparação
+            colunas_comparacao = ["Company Name", "Model Name", "RAM", "Storage",
+                                 "Battery Capacity", "Back Camera MP", "Launched Price (USA)"]
+            df_comparacao = df_comparacao[colunas_comparacao]
+            df_comparacao.columns = ["Marca", "Modelo", "RAM (GB)", "Armazenamento (GB)",
+                                    "Bateria (mAh)", "Câmera Traseira (MP)", "Preço (USD)"]
+
+            # Exibir a tabela de comparação
+            st.dataframe(df_comparacao)
+        else:
+            st.info("Selecione pelo menos um modelo para comparar.")
+
