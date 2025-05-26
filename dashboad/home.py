@@ -49,6 +49,8 @@ class HomePage:
             value=(min_price, max_price)
         )
 
+        num_top = st.sidebar.slider(
+            "Número de dispositivos no ranking do gráfico", min_value=5, max_value=20, value=10)
         df_filtered = dataFormatted.copy()
         if marcas != "Todas":
             df_filtered = df_filtered[df_filtered["Company Name"] == marcas]
@@ -114,8 +116,7 @@ class HomePage:
                 "Score CustoBenefício", ascending=False).reset_index(drop=True)
 
             st.markdown("#### Top Dispositivos por Custo-Benefício")
-            num_top_devices = 10
-            top_cost_benefit = df_score.head(num_top_devices)[
+            top_cost_benefit = df_score.head(num_top)[
                 ["Company Name", "Model Name", "RAM", "Storage", "Battery Capacity",
                  "Back Camera MP", "Launched Price (USA)", "Score CustoBenefício"]
             ]
@@ -131,8 +132,7 @@ class HomePage:
 
         # Gráfico do score (movido para antes das tabelas de consumidor)
         st.markdown("#### Visualização do Score de Custo-Benefício")
-        num_top = st.sidebar.slider(
-            "Número de dispositivos no ranking do gráfico", min_value=5, max_value=20, value=10)
+
         top_devices = df_score.head(num_top)
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.barh(top_devices["Model Name"],
