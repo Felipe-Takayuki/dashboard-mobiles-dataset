@@ -1,5 +1,12 @@
 # Dashboard Mobile
 
+## Integrantes
+- Felipe Takahashi
+- Lucas 
+- Mateus 
+- Nicolas 
+- Paulo Henrique
+
 ## Como Instalar ?
 
 - No linux/mac
