@@ -32,8 +32,8 @@ def extrairArmazenamento(lista):
 def formatterCSV(): 
     df = pd.read_csv("mobiles_dataset.csv", sep=",", decimal=",", encoding="latin1")
     print("Colunas encontradas:", df.columns.tolist())
-    df['Launched Year'] = sorted(pd.to_numeric(df['Launched Year'])) 
-    df['RAM'] = sorted(removeText(df['RAM']))
+    df['Launched Year'] = pd.to_numeric(df['Launched Year']) 
+    df['RAM'] = removeText(df['RAM'])
     df['Mobile Weight'] = removeText(df['Mobile Weight'])
     df['Back Camera'] = removeText(df["Back Camera"])
     df['Battery Capacity'] = removeText(df['Battery Capacity'])
